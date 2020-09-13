@@ -1,0 +1,351 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: MARADMIN Scraper
+Resources:
+  MaradminTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: desc
+          AttributeType: S
+        - AttributeName: pub_date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: desc
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      GlobalSecondaryIndexes:
+        - IndexName: PubDateIndex
+          KeySchema:
+            - AttributeName: pub_date
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+  SubscriberTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: verified
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      GlobalSecondaryIndexes:
+        - IndexName: VerifiedIndex
+          KeySchema:
+            - AttributeName: verified
+              KeyType: HASH
+          Projection:
+            NonKeyAttributes:
+              - email
+              - email_token
+            ProjectionType: INCLUDE
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+  ScraperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: scraper.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: MaradminTable
+        - SNSPublishMessagePolicy:
+            TopicName:
+              Fn::GetAtt:
+                - MaradminTopic
+                - TopicName
+      Environment:
+        Variables:
+          SNS_TOPIC:
+            Ref: MaradminTopic
+          MARADMIN_TABLE_NAME:
+            Ref: MaradminTable
+  SnsToSqsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: sns_to_sqs.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: SubscriberTable
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::GetAtt:
+                - MaradminSqsQueue
+                - QueueName
+        - SQSPollerPolicy:
+            QueueName:
+              Fn::GetAtt:
+                - MaradminSqsQueue
+                - QueueName
+      Events:
+        MaradminSNS:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: MaradminTopic
+      Environment:
+        Variables:
+          SUBSCRIBER_TABLE_NAME:
+            Ref: SubscriberTable
+          SQS_QUEUE:
+            Ref: MaradminSqsQueue
+  MaradminTopic:
+    Type: AWS::SNS::Topic
+  MaradminDeadLetterQueue:
+    Type: AWS::SQS::Queue
+  MaradminSqsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - MaradminDeadLetterQueue
+            - Arn
+        maxReceiveCount: 5
+  SqsToSesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: sqs_to_ses.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Tracing: Active
+      Policies:
+        - Statement:
+            - Sid: SESSendTemplatedEmail
+              Effect: Allow
+              Action:
+                - ses:SendTemplatedEmail
+              Resource: '*'
+      Events:
+        MaradminSQS:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+                - MaradminSqsQueue
+                - Arn
+            BatchSize: 1
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: register.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: SubscriberTable
+      Events:
+        RegisterRestAPI:
+          Type: Api
+          Properties:
+            Path: /register
+            Method: get
+      Environment:
+        Variables:
+          SUBSCRIBER_TABLE_NAME:
+            Ref: SubscriberTable
+  RegisteredFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: registered.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: SubscriberTable
+        - Statement:
+            - Sid: SESSendTemplatedEmail
+              Effect: Allow
+              Action:
+                - ses:SendTemplatedEmail
+              Resource: '*'
+      Events:
+        RegisteredRestAPI:
+          Type: Api
+          Properties:
+            Path: /registered
+            Method: get
+      Environment:
+        Variables:
+          SUBSCRIBER_TABLE_NAME:
+            Ref: SubscriberTable
+  VerifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: verify.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: SubscriberTable
+      Events:
+        VerifyRestAPI:
+          Type: Api
+          Properties:
+            Path: /verify
+            Method: get
+      Environment:
+        Variables:
+          SUBSCRIBER_TABLE_NAME:
+            Ref: SubscriberTable
+  UnsubscribeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: unsubscribe.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: SubscriberTable
+      Events:
+        UnsubscribeRestAPI:
+          Type: Api
+          Properties:
+            Path: /unsubscribe
+            Method: get
+      Environment:
+        Variables:
+          SUBSCRIBER_TABLE_NAME:
+            Ref: SubscriberTable
+  PollFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: poll.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: MaradminTable
+        - Statement:
+            - Sid: SESSendTemplatedEmail
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                Fn::GetAtt:
+                  - ScraperFunction
+                  - Arn
+      Environment:
+        Variables:
+          MARADMIN_TABLE_NAME:
+            Ref: MaradminTable
+          SCRAPER_FUNCTION:
+            Ref: ScraperFunction
+  IncomingEmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: incoming_email.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: SubscriberTable
+        - Statement:
+            - Sid: SESSendTemplatedEmail
+              Effect: Allow
+              Action:
+                - ses:SendTemplatedEmail
+              Resource: '*'
+      Environment:
+        Variables:
+          SUBSCRIBER_TABLE_NAME:
+            Ref: SubscriberTable
+  MaradminDlqBucket:
+    Type: AWS::S3::Bucket
+  DlqToS3Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: dlq_to_s3.lambda_handler
+      Runtime: python3.8
+      Timeout: 10
+      Tracing: Active
+      Events:
+        MaradminDeadLetterQueue:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+                - MaradminDeadLetterQueue
+                - Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          DLQ:
+            Ref: MaradminDeadLetterQueue
+          DlqBucket:
+            Ref: MaradminDlqBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName:
+              Ref: MaradminDlqBucket
+Outputs:
+  SnsToSqsFunction:
+    Description: SQS Queue Name
+    Value:
+      Fn::GetAtt:
+        - MaradminSqsQueue
+        - QueueName
+  RegisterFunction:
+    Description: Register Function
+    Value:
+      Ref: RegisterFunction
+  SNSMaradminTopic:
+    Description: SNS MarAdmin Topic
+    Value:
+      Fn::GetAtt:
+        - MaradminTopic
+        - TopicName
+  ScraperFunction:
+    Description: Scraper Function
+    Value:
+      Ref: ScraperFunction
+  ScraperFunctionArn:
+    Description: Scraper Function Arn
+    Value:
+      Fn::GetAtt:
+        - ScraperFunction
+        - Arn
+  IncomingEmailFunctinArn:
+    Description: IncomingEmail Function Arn
+    Value:
+      Fn::GetAtt:
+        - IncomingEmailFunction
+        - Arn
+  DlqBucket:
+    Description: DLQ Bucket
+    Value:
+      Ref: MaradminDlqBucket
