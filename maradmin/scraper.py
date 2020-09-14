@@ -36,10 +36,10 @@ def lambda_handler(event, context):
             )
             if rs['Count'] == 0:
                 # message is new, get contents and broadcast
-                body = urllib.request.urlopen(item['link']).read().decode('utf-8')
-                start = body.find('<div class="body-text">')
-                end = body.find('</div>', start)
-                body = body[start + len('<div class="body-text">'):end]
+                full_body = urllib.request.urlopen(item['link']).read().decode('utf-8').replace('(slash)', '/')
+                start = full_body.find('<div class="body-text">')
+                end = full_body.find('</div>', start)
+                body = full_body[start + len('<div class="body-text">'):end]
                 publish_sns(item, body)
                 maradmin_table.put_item(Item=item)
                 print('NEW: ' + item['desc'])
@@ -49,6 +49,8 @@ def lambda_handler(event, context):
 
 
 def publish_sns(item, body):
+    sns_topic = os.environ['SNS_TOPIC']
+    # sns_topic = 'arn:aws:sns:us-east-1:676250019162:maradmin-MaradminTable-Testing'
     sns = boto3.client('sns')
     title = constrain_sub(item['title'])
     link = item['link']
@@ -60,18 +62,21 @@ def publish_sns(item, body):
     })
     if len(message.encode('utf-8')) > 262144:
         # Message max of 256KB
-        print('Truncated ' + str(len(message.encode('utf-8'))/1024) + f'KB msg ({title})')
+        orig_len = len(message.encode('utf-8'))
+        print(f'Truncating {title} from ' + str(orig_len / 1024) + f' KB')
         footer = f'...<br />Message Truncated.  Visit {link} to read the entire message.'
-        abbr_body = body[0:(262144-(len(footer)*4))] + footer
+        trunc_len = orig_len - 262144
+        abbr_body = body[0:(len(body.encode('utf-8')) - trunc_len - len(footer))] + footer
         message = json.dumps({
             'default': title,
             'lambda': abbr_body,
             'sms': text_msg[0:1600]  # max 1,600 characters
         })
+        print('New Size ' + str(len(message.encode('utf-8'))) + ' of 262144')
 
     try:
         response = sns.publish(
-            TopicArn=os.environ['SNS_TOPIC'],
+            TopicArn=sns_topic,
             Message=message,
             Subject=title,
             MessageStructure='json'

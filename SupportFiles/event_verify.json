@@ -1,0 +1,45 @@
+{
+  "resource": "/verify",
+  "path": "/verify",
+  "httpMethod": "GET",
+  "headers": null,
+  "multiValueHeaders": null,
+  "queryStringParameters": {
+    "email_token": "OLHAqPJFGYnAyAJa",
+    "email": "breencp@gmail.com"
+  },
+  "multiValueQueryStringParameters": {
+    "email_token": [
+      "OLHAqPJFGYnAyAJa"
+    ],
+    "email": [
+      "breencp@gmail.com"
+    ]
+  },
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "resourceId": "yu5gqa",
+    "resourcePath": "/verify",
+    "httpMethod": "GET",
+    "extendedRequestId": "S1LwOGKNoAMFnvw=",
+    "requestTime": "14/Sep/2020:00:57:37 +0000",
+    "path": "/verify",
+    "accountId": "676250019162",
+    "protocol": "HTTP/1.1",
+    "stage": "test-invoke-stage",
+    "domainPrefix": "testPrefix",
+    "requestTimeEpoch": 1600045057368,
+    "requestId": "3fdb0e4c-a2c3-4a9e-8234-bc558fe92053",
+    "identity": {
+      "cognitoIdentityPoolId": null,
+      "cognitoIdentityId": null,
+      "apiKey": "test-invoke-api-key",
+      "principalOrgId": null,
+      "cognitoAuthenticationType": null,
+      "userArn": "arn:aws:iam::676250019162:user/christopher.breen",
+      "apiKeyId": "test-invoke-api-key-id",
+      "userAgent": "aws-internal"
+    }
+  }
+}

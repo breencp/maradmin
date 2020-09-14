@@ -15,12 +15,12 @@ def lambda_handler(event, context):
     card_subtitle = 'Please try again'
     message = "I'm sorry, that email address appears to be invalid."
     try:
-        email = sanitized(unquote(event['queryStringParameters']['email']))
+        email, domain = sanitized_email(unquote(event['queryStringParameters']['email']))
         if email:
-            card_title = 'Registered'
-            card_subtitle = 'Pending Verification'
-            message = f'Notification emails will not start until your address has been verified. ' \
-                      f'Please check your {email} inbox for a verification email sent from maradmin@christopherbreen.com.'
+            card_title = 'Verification Pending'
+            card_subtitle = 'Email Verification Sent'
+            message = f'Search your inbox for a verification email sent from maradmin@christopherbreen.com. ' \
+                      f'It is very likely in your junk, spam, or promotions tab (gmail users).'
 
             if already_verified(email):
                 print(f'Duplicate Registration: {email}')
@@ -41,12 +41,15 @@ def lambda_handler(event, context):
                     Item=user_data
                 )
                 # Log to CloudWatch
-                print('DB_Response:', db_response)
+                print('Dynamo Response:', db_response)
 
                 # send verification email
                 html_msg = '<samp><p>Greetings,</p>' \
-                           '<p>Thank you for subscribing to the MARADMIN Notifications service.</p>' \
-                           f'<p>Please verify your email by visiting {verification_link}</p>'
+                           '<p>Thank you for subscribing to the MARADMIN Notifications service.</p>'
+                if domain not in ['mil', 'gov']:
+                    html_msg += f'<p>Please verify your email by visiting {verification_link}</p>'
+                else:
+                    html_msg += f'<p>Please reply to this email and change the subject to SUBSCRIBE to complete the verification process.</p>'
 
                 ses = boto3.client('ses')
                 ses_response = ses.send_templated_email(
@@ -126,13 +129,13 @@ def lambda_handler(event, context):
     }
 
 
-def sanitized(user_input):
+def sanitized_email(user_input):
     regex = r"^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$"
-    match = re.fullmatch(regex, user_input)
-    if match:
-        return match.string
+    match = re.match(regex, user_input)
+    if match and match.group(3) in ['com', 'org', 'net', 'int', 'edu', 'gov', 'mil']:
+        return match.string, match.group(3)
     else:
-        return None
+        return None, None
 
 
 def get_token():

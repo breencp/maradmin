@@ -53,7 +53,7 @@ def lambda_handler(event, context):
         html_msg = '<samp><p>Greetings,</p>' \
                    '<p>Thank you for subscribing to the MARADMIN Notifications service.</p>' \
                    f'<p>You will now begin to receive emails of MARADMINS soon after they are posted. ' \
-                   'Be sure to add maradmin@christopherbreen.com to your safe-senders list and feel free ' \
+                   'Be sure to add maradmin@christopherbreen.com to your contacts and feel free ' \
                    'to reach out anytime at this same address.  Enjoy!</p>'
 
         ses = boto3.client('ses')

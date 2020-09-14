@@ -1,0 +1,95 @@
+{
+  "resource": "/registered",
+  "path": "/maradmin/registered/",
+  "httpMethod": "GET",
+  "headers": {
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "accept-encoding": "gzip, deflate, br",
+    "accept-language": "en-us",
+    "cookie": "_ga=GA1.2.277207843.1600041508; _gid=GA1.2.1679927414.1600041508",
+    "Host": "api.christopherbreen.com",
+    "referer": "https://api.christopherbreen.com/maradmin/register",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.2 Safari/605.1.15",
+    "X-Amzn-Trace-Id": "Root=1-5f5eb2c4-8ca50349916c7807a6439f51",
+    "X-Forwarded-For": "68.7.194.64",
+    "X-Forwarded-Port": "443",
+    "X-Forwarded-Proto": "https"
+  },
+  "multiValueHeaders": {
+    "accept": [
+      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    ],
+    "accept-encoding": [
+      "gzip, deflate, br"
+    ],
+    "accept-language": [
+      "en-us"
+    ],
+    "cookie": [
+      "_ga=GA1.2.277207843.1600041508; _gid=GA1.2.1679927414.1600041508"
+    ],
+    "Host": [
+      "api.christopherbreen.com"
+    ],
+    "referer": [
+      "https://api.christopherbreen.com/maradmin/register"
+    ],
+    "User-Agent": [
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.2 Safari/605.1.15"
+    ],
+    "X-Amzn-Trace-Id": [
+      "Root=1-5f5eb2c4-8ca50349916c7807a6439f51"
+    ],
+    "X-Forwarded-For": [
+      "68.7.194.64"
+    ],
+    "X-Forwarded-Port": [
+      "443"
+    ],
+    "X-Forwarded-Proto": [
+      "https"
+    ]
+  },
+  "queryStringParameters": {
+    "email": "breencp@gmail.mol"
+  },
+  "multiValueQueryStringParameters": {
+    "email": [
+      "breencp@gmail.com"
+    ]
+  },
+  "pathParameters": "None",
+  "stageVariables": "None",
+  "requestContext": {
+    "resourceId": "t7ev0m",
+    "resourcePath": "/registered",
+    "httpMethod": "GET",
+    "extendedRequestId": "S1DeuGaFoAMFdFQ=",
+    "requestTime": "14/Sep/2020:00:01:08 +0000",
+    "path": "/maradmin/registered/",
+    "accountId": "676250019162",
+    "protocol": "HTTP/1.1",
+    "stage": "Prod",
+    "domainPrefix": "api",
+    "requestTimeEpoch": 1600041668514,
+    "requestId": "59ddc15b-6f41-469b-b983-9b4a5af8e829",
+    "identity": {
+      "cognitoIdentityPoolId": "None",
+      "accountId": "None",
+      "cognitoIdentityId": "None",
+      "caller": "None",
+      "sourceIp": "68.7.194.64",
+      "principalOrgId": "None",
+      "accessKey": "None",
+      "cognitoAuthenticationType": "None",
+      "cognitoAuthenticationProvider": "None",
+      "userArn": "None",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.2 Safari/605.1.15",
+      "user": "None"
+    },
+    "domainName": "api.christopherbreen.com",
+    "apiId": "wsohssbh73"
+  },
+  "body": "None",
+  "isBase64Encoded": "None"
+}

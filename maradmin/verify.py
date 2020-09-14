@@ -20,12 +20,11 @@ def lambda_handler(event, context):
             rs = subscriber_table.query(
                 KeyConditionExpression=Key('email').eq(email)
             )
-            if rs:
+            if rs['Items']:
                 if rs['Items'][0]['email_token'] == email_token or rs['Items'][0]['verified'] == 'True':
                     card_title = 'Success'
                     card_subtitle = 'Email Verified'
-                    message = 'You will now begin to receive emails of MARADMINS soon after they are posted. ' \
-                              'Be sure to add maradmin@christopherbreen.com to your safe-senders list and feel ' \
+                    message = 'Be sure to add maradmin@christopherbreen.com to your contacts list and feel ' \
                               'free to reach out anytime at that same address.  Enjoy!'
 
                     # update verified status in subscriber table
