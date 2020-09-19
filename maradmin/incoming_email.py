@@ -1,8 +1,8 @@
 import json
-import random
-import string
 import boto3
 import os
+
+from maradmin_globals import get_token
 
 
 def lambda_handler(event, context):
@@ -72,9 +72,3 @@ def lambda_handler(event, context):
         print(ses_response)
 
     return {'actions': [{'action': {'type': action}, 'allRecipients': True}]}
-
-
-def get_token():
-    pool = string.ascii_letters
-    email_token = ''.join(random.choice(pool) for i in range(16))
-    return email_token
