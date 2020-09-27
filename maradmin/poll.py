@@ -22,7 +22,7 @@ def lambda_handler(event, context):
         # received 403 forbidden, we are being throttled
         # clear poll last pub date to ensure scraper gets executed again at next interval
         if err.code == 403:
-            publish_error_sns('403 Error Scraping', f'Received HTTP 403 Forbidden Error attempting to read {url}')
+            publish_error_sns('403 Error Polling', f'Received HTTP 403 Forbidden Error attempting to read {url}')
         else:
             raise
     except:

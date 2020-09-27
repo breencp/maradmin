@@ -15,9 +15,8 @@ def lambda_handler(event, context):
     try:
         response = urllib.request.urlopen(url).read()
     except HTTPError as err:
-        # received 403 forbidden, we are being throttled
-        # clear poll last pub date to ensure scraper gets executed again at next interval
         if err.code == 403:
+            # received 403 forbidden, we are being throttled
             publish_error_sns('403 Error Scraping', f'Received HTTP 403 Forbidden Error attempting to read {url}')
         else:
             raise
@@ -31,7 +30,9 @@ def lambda_handler(event, context):
             print('ParseError: ' + response)
             raise
 
-        for child in root[0]:
+        # iterate in reverse to ensure errors (particularly 403) mid-way do not prevent poll from instantiating scraper
+        # at the next interval.
+        for child in reversed(root[0]):
             if child.tag == 'item':
                 item = {
                     'desc': re.sub(r'<.*?>', '', str.strip(child[2].text)),

@@ -3,12 +3,13 @@ import random
 import string
 import re
 import boto3
+import os
 
 from yattag import Doc
 
 
 def publish_error_sns(title, body):
-    sns_topic = 'arn:aws:sns:us-east-1:676250019162:Default_CloudWatch_Alarms_Topic'
+    sns_topic = os.environ['ERRORS_TOPIC']
     sns = boto3.client('sns')
     message = json.dumps({
         'default': title,

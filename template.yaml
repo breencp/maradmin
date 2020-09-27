@@ -69,10 +69,17 @@ Resources:
               Fn::GetAtt:
                 - MaradminTopic
                 - TopicName
+        - SNSPublishMessagePolicy:
+            TopicName:
+              Fn::GetAtt:
+                - MaradminErrorsTopic
+                - TopicName
       Environment:
         Variables:
           SNS_TOPIC:
             Ref: MaradminTopic
+          ERRORS_TOPIC:
+            Ref: MaradminErrorsTopic
           MARADMIN_TABLE_NAME:
             Ref: MaradminTable
   SnsToSqsFunction:
@@ -109,6 +116,8 @@ Resources:
           SQS_QUEUE:
             Ref: MaradminSqsQueue
   MaradminTopic:
+    Type: AWS::SNS::Topic
+  MaradminErrorsTopic:
     Type: AWS::SNS::Topic
   MaradminDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -256,12 +265,20 @@ Resources:
                 Fn::GetAtt:
                   - ScraperFunction
                   - Arn
+        - SNSPublishMessagePolicy:
+            TopicName:
+              Fn::GetAtt:
+                - MaradminErrorsTopic
+                - TopicName
       Environment:
         Variables:
           MARADMIN_TABLE_NAME:
             Ref: MaradminTable
           SCRAPER_FUNCTION:
             Ref: ScraperFunction
+          ERRORS_TOPIC:
+            Ref: MaradminErrorsTopic
+
   IncomingEmailFunction:
     Type: AWS::Serverless::Function
     Properties:

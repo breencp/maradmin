@@ -1,0 +1,85 @@
+{
+  "eventType": "Click",
+  "mail": {
+    "timestamp": "2020-09-21T20:45:19.781Z",
+    "source": "\"MARADMIN\" <maradmin@christopherbreen.com>",
+    "sendingAccountId": "676250019162",
+    "messageId": "01000174b269ea25-0337da1b-f01a-4020-88df-d8e95d8277cb-000000",
+    "destination": [
+      "windell.ingle@usmc.mil"
+    ],
+    "headersTruncated": false,
+    "headers": [
+      {
+        "name": "Date",
+        "value": "Mon, 21 Sep 2020 20:45:19 +0000"
+      },
+      {
+        "name": "From",
+        "value": "MARADMIN <maradmin@christopherbreen.com>"
+      },
+      {
+        "name": "Reply-To",
+        "value": "maradmin@christopherbreen.com"
+      },
+      {
+        "name": "To",
+        "value": "windell.ingle@usmc.mil"
+      },
+      {
+        "name": "Message-ID",
+        "value": "<83490897.271922.1600721120060.JavaMail.ec2-user@ip-10-0-177-131.ec2.internal>"
+      },
+      {
+        "name": "Subject",
+        "value": "2020 USMC COMMANDER IN CHIEFS ANNUAL AWARD FOR INSTALLATION EXCELLENCE (CINC IEA) RECIPIENT"
+      },
+      {
+        "name": "MIME-Version",
+        "value": "1.0"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative;  boundary=\"----=_Part_271921_808761782.1600721120060\""
+      }
+    ],
+    "commonHeaders": {
+      "from": [
+        "MARADMIN <maradmin@christopherbreen.com>"
+      ],
+      "replyTo": [
+        "maradmin@christopherbreen.com"
+      ],
+      "date": "Mon, 21 Sep 2020 20:45:19 +0000",
+      "to": [
+        "windell.ingle@usmc.mil"
+      ],
+      "messageId": "01000174b269ea25-0337da1b-f01a-4020-88df-d8e95d8277cb-000000",
+      "subject": "2020 USMC COMMANDER IN CHIEFS ANNUAL AWARD FOR INSTALLATION EXCELLENCE (CINC IEA) RECIPIENT"
+    },
+    "tags": {
+      "ses:operation": [
+        "SendTemplatedEmail"
+      ],
+      "ses:configuration-set": [
+        "maradmin"
+      ],
+      "ses:source-ip": [
+        "54.236.120.45"
+      ],
+      "ses:from-domain": [
+        "christopherbreen.com"
+      ],
+      "ses:caller-identity": [
+        "maradmin-SqsToSesFunctionRole-1F94IVPA2UF8G"
+      ]
+    }
+  },
+  "click": {
+    "timestamp": "2020-09-22T14:32:49.980Z",
+    "ipAddress": "138.162.140.52",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Trident/7.0; rv:11.0) like Gecko",
+    "link": "https://api.christopherbreen.com/maradmin/unsubscribe?email=windell.ingle@usmc.mil&email_token=RmtuRqWBBxvzSscm",
+    "linkTags": null
+  }
+}
