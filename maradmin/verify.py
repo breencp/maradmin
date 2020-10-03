@@ -10,7 +10,7 @@ def lambda_handler(event, context):
     card_subtitle = 'Please try again'
     message = "I'm sorry, that token/email pair appears to be invalid."
     try:
-        email = sanitized_email(unquote(event['queryStringParameters']['email']))
+        email, domain = sanitized_email(unquote(event['queryStringParameters']['email']))
         email_token = sanitized_token(event['queryStringParameters']['email_token'])
         if email and email_token:
             # email and token are formatted correctly, let's see if they match

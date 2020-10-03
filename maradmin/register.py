@@ -20,7 +20,7 @@ def lambda_handler(event, context):
                      content='width=device-width')
             doc.stag('meta', property='og:title', content='MARADMIN Notifications')
             doc.stag('meta', property='og:type', content='website')
-            doc.stag('meta', property='og:url', content='https://api.christopherbreen.com/maradmin/register')
+            doc.stag('meta', property='og:url', content='https://maradmin.christopherbreen.com')
             doc.stag('meta', property='og:image', content='https://s3.amazonaws.com/com.christopherbreen.static/maradmin/maradmin_logo_1200x630.png')
             doc.stag('meta', property='og:description', content='Receive new MARADMINs directly to your inbox via email.')
             # doc.stag('meta', property='fb:app_id', content='896134517576896')
@@ -43,7 +43,7 @@ def lambda_handler(event, context):
                             with tag('div', klass='card'):
                                 with tag('div', klass='card-body'):
                                     line('h3', 'Register', klass='card-title')
-                                    with tag('form', action='/maradmin/registered/', method='get'):
+                                    with tag('form', action='registered/', method='get'):
                                         with tag('div', klass='form-group'):
                                             with tag('label', ('for', 'email')):
                                                 text('Email Address')

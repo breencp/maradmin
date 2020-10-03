@@ -13,7 +13,7 @@ def lambda_handler(event, context):
               "unsubscribe link from the most recent email.  If you still encounter problems, send us an email from " \
               "the address you wish to unsubscribe and the word UNSUBSCRIBE in the subject line."
     try:
-        email = sanitized_email(unquote(event['queryStringParameters']['email']))
+        email, domain = sanitized_email(unquote(event['queryStringParameters']['email']))
         email_token = sanitized_token(event['queryStringParameters']['email_token'])
         if email and email_token:
             # email and token are formatted correctly, let's see if they match

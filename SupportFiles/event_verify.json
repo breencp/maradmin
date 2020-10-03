@@ -5,12 +5,12 @@
   "headers": null,
   "multiValueHeaders": null,
   "queryStringParameters": {
-    "email_token": "OLHAqPJFGYnAyAJa",
+    "email_token": "huJEHCRByCXMODsg",
     "email": "breencp@gmail.com"
   },
   "multiValueQueryStringParameters": {
     "email_token": [
-      "OLHAqPJFGYnAyAJa"
+      "huJEHCRByCXMODsg"
     ],
     "email": [
       "breencp@gmail.com"

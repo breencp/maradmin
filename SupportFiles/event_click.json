@@ -79,7 +79,7 @@
     "timestamp": "2020-09-22T14:32:49.980Z",
     "ipAddress": "138.162.140.52",
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Trident/7.0; rv:11.0) like Gecko",
-    "link": "https://api.christopherbreen.com/maradmin/unsubscribe?email=windell.ingle@usmc.mil&email_token=RmtuRqWBBxvzSscm",
+    "link": "https://maradmin.christopherbreen.com/unsubscribe?email=windell.ingle@usmc.mil&email_token=RmtuRqWBBxvzSscm",
     "linkTags": null
   }
 }

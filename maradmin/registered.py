@@ -27,7 +27,7 @@ def lambda_handler(event, context):
 
                 # store information to subscriber table
                 email_token = get_token()
-                verification_link = f'https://api.christopherbreen.com/maradmin/verify?email={email}&email_token={email_token}'
+                verification_link = f'https://maradmin.christopherbreen.com/verify?email={email}&email_token={email_token}'
                 user_data = {
                     'email': email,
                     'verified': 'False',

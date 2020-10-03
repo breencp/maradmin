@@ -2,7 +2,7 @@
   "Template": {
     "TemplateName": "MaradminTemplate",
     "SubjectPart": "{{title}}",
-    "TextPart": "{{html_msg}}\r\nComments, questions, concerns?  Send an email to maradmin@christopherbreen.com or reply to this email for assistance.\r\nIf you wish to unsubscribe from future emails, visit https://api.christopherbreen.com/maradmin/unsubscribe?email{{email}}&email_token={{email_token}} or send us an email with UNSUBSCRIBE as the subject.",
+    "TextPart": "{{html_msg}}\r\nComments, questions, concerns?  Send an email to maradmin@christopherbreen.com or reply to this email for assistance.\r\nIf you wish to unsubscribe from future emails, visit https://maradmin.christopherbreen.com/unsubscribe?email{{email}}&email_token={{email_token}} or send us an email with UNSUBSCRIBE as the subject.",
     "HtmlPart": "{{html_msg}}<hr>Comments, questions, concerns?  Send an email to maradmin@christopherbreen.com or reply to this email for assistance.<p>{{{unsubscribe_link}}} or <a ses:no-track href=mailto:maradmin@christopherbreen.com?subject=UNSUBSCRIBE>send us an email with UNSUBSCRIBE as the subject</a>.</p>"
   }
 }

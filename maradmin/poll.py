@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     url = 'https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=1&category=14336'
     req = urllib.request.Request(url)
     req.add_header('Accept-Encoding', 'identity;q=1.0')
-    req.add_header('User-Agent', 'api.christopherbreen.com <maradmin@christopherbreen.com>')
+    req.add_header('User-Agent', 'maradmin.christopherbreen.com <maradmin@christopherbreen.com>')
 
     try:
         data = urllib.request.urlopen(req)

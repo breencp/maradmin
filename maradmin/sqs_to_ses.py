@@ -8,7 +8,7 @@ def lambda_handler(event, context):
     subject = event['Records'][0]['messageAttributes']['subject']['stringValue']
     email_token = event['Records'][0]['messageAttributes']['email_token']['stringValue']
     params = f'?email={email}&email_token={email_token}'
-    unsubscribe_link = f'<a href=https://api.christopherbreen.com/maradmin/unsubscribe{params}>Click here to unsubscribe</a>'
+    unsubscribe_link = f'<a href=https://maradmin.christopherbreen.com/unsubscribe{params}>Click here to unsubscribe</a>'
     ses = boto3.client('ses')
     template_data = json.dumps({
         'title': subject,
