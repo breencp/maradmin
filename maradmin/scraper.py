@@ -4,9 +4,11 @@ import urllib.request
 import re
 import boto3
 import os
+import requests
 
 from boto3.dynamodb.conditions import Key
 from urllib.error import HTTPError
+
 from maradmin_globals import publish_error_sns
 
 
@@ -17,7 +19,10 @@ def lambda_handler(event, context):
     except HTTPError as err:
         if err.code == 403:
             # received 403 forbidden, we are being throttled
-            publish_error_sns('403 Error Scraping', f'Received HTTP 403 Forbidden Error attempting to read {url}')
+            lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
+            #publish_error_sns('403 Error Scraping',
+            #                  f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
+            print(f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
         else:
             raise
     except:
@@ -114,5 +119,3 @@ def constrain_sub(orig_title):
         return title[0:99]
     else:
         return 'A new MARADMIN has been published'
-
-

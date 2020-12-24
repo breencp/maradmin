@@ -1,0 +1,13 @@
+{
+  "version": "0",
+  "id": "f9573696-11f4-0f5a-10c0-99eae1fc764d",
+  "detail-type": "Scheduled Event",
+  "source": "aws.events",
+  "account": "676250019162",
+  "time": "2020-10-07T14:45:00Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:events:us-east-1:676250019162:rule/Poll-MARADMIN"
+  ],
+  "detail": {}
+}
