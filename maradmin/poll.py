@@ -17,9 +17,6 @@ def lambda_handler(event, context):
     req.add_header('Accept-Encoding', 'identity;q=1.0')
     req.add_header('User-Agent', 'maradmin.christopherbreen.com <maradmin@christopherbreen.com>')
 
-    # lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
-    # print(f'Lambda IP: {lambda_ip}')
-
     try:
         data = urllib.request.urlopen(req)
     except HTTPError as err:
@@ -27,8 +24,8 @@ def lambda_handler(event, context):
         if err.code == 403:
             lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
             print(f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
-            # publish_error_sns('403 Error Polling',
-            #                  f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
+            publish_error_sns('403 Error Polling',
+                              f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
         else:
             raise
     except:
@@ -38,8 +35,12 @@ def lambda_handler(event, context):
         try:
             root = ET.fromstring(msg)
         except ET.ParseError:
-            print(f'ParseError: data.info:{json.dumps(data.info())} msg:{str(msg)}')
-            raise
+            try:
+                print(f'ParseError: data.info:{json.dumps(data.info())} msg:{str(msg)}')
+            except TypeError:
+                print(f'ParseError: data.info:{data.info()} msg:{str(msg)}')
+            finally:
+                raise
 
         latest_pub = root[0][4].text
         print(f'{latest_pub} is latest publication on server.')
