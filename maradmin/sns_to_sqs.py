@@ -31,7 +31,7 @@ def lambda_handler(event, context):
         done = start_key is None
         for item in db_response['Items']:
             email = item['email']
-            email_token = item['email_token']
+            # email_token = item['email_token']
             subject = event['Records'][0]['Sns']['Subject']
             sqs_response = sqs.send_message(
                 QueueUrl=os.environ['SQS_QUEUE'],
@@ -45,10 +45,10 @@ def lambda_handler(event, context):
                         'DataType': 'String',
                         'StringValue': subject
                     },
-                    'email_token': {
-                        'DataType': 'String',
-                        'StringValue': email_token
-                    }
+                    # 'email_token': {
+                    #     'DataType': 'String',
+                    #     'StringValue': email_token
+                    # }
                 }
             )
             # Log CloudWatch

@@ -1,10 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: MARADMIN Scraper
+Globals:
+  Function:
+    Tags:
+      user:Application: SeaConditions
 Resources:
   MaradminTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      Tags:
+        - Key: "user:Application"
+          Value: "MARADMIN"
       AttributeDefinitions:
         - AttributeName: desc
           AttributeType: S
@@ -29,6 +36,9 @@ Resources:
   SubscriberTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      Tags:
+        - Key: "user:Application"
+          Value: "MARADMIN"
       AttributeDefinitions:
         - AttributeName: email
           AttributeType: S
@@ -88,7 +98,7 @@ Resources:
       CodeUri: maradmin/
       Handler: sns_to_sqs.lambda_handler
       Runtime: python3.8
-      Timeout: 10
+      Timeout: 60
       Policies:
         - DynamoDBCrudPolicy:
             TableName:
@@ -137,7 +147,7 @@ Resources:
       CodeUri: maradmin/
       Handler: sqs_to_ses.lambda_handler
       Runtime: python3.8
-      Timeout: 10
+      Timeout: 60
       Tracing: Active
       Policies:
         - Statement:

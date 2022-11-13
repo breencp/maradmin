@@ -3,12 +3,9 @@ import xml.etree.ElementTree as ET
 import urllib.request
 import boto3
 import os
-import requests
 
 from boto3.dynamodb.conditions import Key
-from urllib.error import HTTPError
-
-from maradmin_globals import publish_error_sns
+from urllib.error import HTTPError, URLError
 
 
 def lambda_handler(event, context):
@@ -22,12 +19,18 @@ def lambda_handler(event, context):
     except HTTPError as err:
         # received 403 forbidden, we are being throttled
         if err.code == 403:
-            lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
-            print(f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
-            publish_error_sns('403 Error Polling',
-                              f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
+            # lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
+            print('[WARNING] Received HTTP 403 Forbidden Error.')
+            # print(f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
+            # publish_error_sns('403 Error Polling',
+            #                  f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
         else:
             raise
+    except URLError as err:
+        # urlopen error [Errno 97] Address family not supported by protocol
+        # Occurs at random, perhaps when USMC Maradmin server is down.
+        print(f'[WARNING] {err}')
+        pass
     except:
         raise
     else:
