@@ -4,7 +4,8 @@ Description: MARADMIN Scraper
 Globals:
   Function:
     Tags:
-      user:Application: SeaConditions
+      user:Application: MARADMIN
+
 Resources:
   MaradminTable:
     Type: AWS::DynamoDB::Table
@@ -92,6 +93,13 @@ Resources:
             Ref: MaradminErrorsTopic
           MARADMIN_TABLE_NAME:
             Ref: MaradminTable
+      DeadLetterQueue:
+        TargetArn: !Ref MaradminErrorsTopic
+        Type: SNS
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 900
+        MaximumRetryAttempts: 2
+
   SnsToSqsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -261,7 +269,8 @@ Resources:
       CodeUri: maradmin/
       Handler: poll.lambda_handler
       Runtime: python3.8
-      Timeout: 10
+      Timeout: 60
+      MemorySize: 160
       Policies:
         - DynamoDBCrudPolicy:
             TableName:
@@ -288,6 +297,12 @@ Resources:
             Ref: ScraperFunction
           ERRORS_TOPIC:
             Ref: MaradminErrorsTopic
+      DeadLetterQueue:
+        TargetArn: !Ref MaradminErrorsTopic
+        Type: SNS
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 60
+        MaximumRetryAttempts: 0
 
   IncomingEmailFunction:
     Type: AWS::Serverless::Function
