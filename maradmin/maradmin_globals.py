@@ -61,12 +61,12 @@ def build_webpage(page_title, card_title, card_subtitle, message):
     doc.asis('<!DOCTYPE html>')
     with tag('html', lang='en'):
         with tag('head'):
-            with tag('script', 'async', src='https://www.googletagmanager.com/gtag/js?id=UA-176788003-1'):
+            with tag('script', 'async', src='https://www.googletagmanager.com/gtag/js?id=G-LNFSXHGK4H'):
                 pass
             with tag('script'):
                 text('window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}'
                      'gtag(\'js\', new Date());'
-                     'gtag(\'config\', \'UA-176788003-1\');')
+                     'gtag(\'config\', \'G-LNFSXHGK4H\');')
             doc.stag('meta', charset='UTF-8')
             doc.stag('meta', ('initial-scale', 1), ('shrink-to-fit', 'no'), name='viewport',
                      content='width=device-width')

@@ -8,21 +8,23 @@ def lambda_handler(event, context):
     doc.asis('<!DOCTYPE html>')
     with tag('html', lang='en'):
         with tag('head'):
-            with tag('script', 'async', src='https://www.googletagmanager.com/gtag/js?id=UA-176788003-1'):
+            with tag('script', 'async', src='https://www.googletagmanager.com/gtag/js?id=G-LNFSXHGK4H'):
                 pass
             with tag('script'):
                 text('window.dataLayer = window.dataLayer || [];'
                      'function gtag(){dataLayer.push(arguments);}'
                      'gtag(\'js\', new Date());'
-                     'gtag(\'config\', \'UA-176788003-1\');')
+                     'gtag(\'config\', \'G-LNFSXHGK4H\');')
             doc.stag('meta', charset='UTF-8')
             doc.stag('meta', ('initial-scale', 1), ('shrink-to-fit', 'no'), name='viewport',
                      content='width=device-width')
             doc.stag('meta', property='og:title', content='MARADMIN Notifications')
             doc.stag('meta', property='og:type', content='website')
             doc.stag('meta', property='og:url', content='https://maradmin.christopherbreen.com')
-            doc.stag('meta', property='og:image', content='https://s3.amazonaws.com/com.christopherbreen.static/maradmin/maradmin_logo_1200x630.png')
-            doc.stag('meta', property='og:description', content='Receive new MARADMINs directly to your inbox via email.')
+            doc.stag('meta', property='og:image',
+                     content='https://s3.amazonaws.com/com.christopherbreen.static/maradmin/maradmin_logo_1200x630.png')
+            doc.stag('meta', property='og:description',
+                     content='Receive new MARADMINs directly to your inbox via email.')
             # doc.stag('meta', property='fb:app_id', content='896134517576896')
             with tag('title'):
                 text(page_title)
@@ -51,8 +53,10 @@ def lambda_handler(event, context):
                                                      type='email', klass='form-control', name='email', required='True',
                                                      autocomplete='username')
                                             with tag('small', ('id', 'email_help'), klass='form-text text-muted'):
-                                                text('Your email will not be sold, shared, or otherwise spammed.  You will ONLY receive an email when a new MARADMIN is published. ')
-                                                line('a', 'Privacy Policy', href='https://s3.amazonaws.com/com.christopherbreen.static/maradmin/privacy.html')
+                                                text(
+                                                    'Your email will not be sold, shared, or otherwise spammed.  You will ONLY receive an email when a new MARADMIN is published. ')
+                                                line('a', 'Privacy Policy',
+                                                     href='https://s3.amazonaws.com/com.christopherbreen.static/maradmin/privacy.html')
                                             doc.stag('br')
                                             line('button', 'Submit', type='submit', klass='btn btn-primary')
                                 with tag('div', klass='card-footer text-muted text-center'):
