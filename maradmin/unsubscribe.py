@@ -4,6 +4,7 @@ import boto3
 import os
 from urllib.parse import unquote
 from maradmin_globals import sanitized_email, sanitized_token, build_webpage
+import json
 
 
 def lambda_handler(event, context):
@@ -12,18 +13,20 @@ def lambda_handler(event, context):
     message = "I'm sorry, that token/email pair appears to be invalid.  Please try again, ensuring you are using the " \
               "unsubscribe link from the most recent email.  If you still encounter problems, send us an email from " \
               "the address you wish to unsubscribe and the word UNSUBSCRIBE in the subject line."
-    try:
-        email, domain = sanitized_email(unquote(event['queryStringParameters']['email']))
-        email_token = sanitized_token(event['queryStringParameters']['email_token'])
-        if email and email_token:
-            # email and token are formatted correctly, let's see if they match
-            db = boto3.resource('dynamodb')
-            subscriber_table = db.Table(os.environ['SUBSCRIBER_TABLE_NAME'])
-            rs = subscriber_table.query(
-                KeyConditionExpression=Key('email').eq(email)
-            )
-            if rs:
-                if rs['Items'][0]['email_token'] == email_token:
+
+    email_param = event['queryStringParameters'].get('email') if event.get('queryStringParameters') else None
+    token_param = event['queryStringParameters'].get('email_token') if event.get('queryStringParameters') else None
+
+    if email_param and token_param:
+        try:
+            email, domain = sanitized_email(unquote(email_param))
+            email_token = sanitized_token(token_param)
+
+            if email and email_token:
+                db = boto3.resource('dynamodb')
+                subscriber_table = db.Table(os.environ['SUBSCRIBER_TABLE_NAME'])
+                rs = subscriber_table.query(KeyConditionExpression=Key('email').eq(email))
+                if rs['Items'] and rs['Items'][0]['email_token'] == email_token:
                     card_title = 'Unsubscribed'
                     card_subtitle = 'Successfully removed'
                     message = 'Was it something we did?  You have been successfully unsubscribed and will no longer ' \
@@ -39,12 +42,9 @@ def lambda_handler(event, context):
                     # log to CloudWatch
                     print(F'WWW-UNSUBSCRIBE: {email} - {db_response}')
 
-    except KeyError as err:
-        print('KeyError')
-    except ValueError as err:
-        print('ValueError')
-    except TypeError as err:
-        print('TypeError')
+        except Exception as e:
+            print(json.dumps(context))
+            raise e
 
     html_result = build_webpage('MARADMIN', card_title, card_subtitle, message)
 
@@ -55,3 +55,11 @@ def lambda_handler(event, context):
             'Content-Type': 'text/html',
         }
     }
+
+
+if __name__ == '__main__':
+    with open('../events/unsubscribe.json') as f:
+        debug_event = json.load(f)
+
+    result = lambda_handler(debug_event, None)
+    print(result)

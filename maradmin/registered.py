@@ -55,6 +55,7 @@ def lambda_handler(event, context):
                     ReplyToAddresses=['maradmin@christopherbreen.com'],
                     Destination={
                         'ToAddresses': [email],
+                        'BccAddresses': ['me@christopherbreen.com']
                     },
                     Template='NewSubscriberTemplate',
                     TemplateData=json.dumps({

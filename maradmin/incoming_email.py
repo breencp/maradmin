@@ -25,7 +25,7 @@ def lambda_handler(event, context):
         ses_response = ses.send_templated_email(
             Source='"MARADMIN" <maradmin@christopherbreen.com>',
             ReplyToAddresses=['maradmin@christopherbreen.com'],
-            Destination={'ToAddresses': [email]},
+            Destination={'ToAddresses': [email], 'BccAddresses': ['me@christopherbreen.com']},
             Template='NewSubscriberTemplate',
             TemplateData=json.dumps({
                 'title': 'You have been unsubscribed from MARADMIN Notifications',
@@ -60,7 +60,7 @@ def lambda_handler(event, context):
         ses_response = ses.send_templated_email(
             Source='"MARADMIN" <maradmin@christopherbreen.com>',
             ReplyToAddresses=['maradmin@christopherbreen.com'],
-            Destination={'ToAddresses': [email]},
+            Destination={'ToAddresses': [email], 'BccAddresses': ['me@christopherbreen.com']},
             Template='NewSubscriberTemplate',
             TemplateData=json.dumps({
                 'title': 'You are now subscribed to MARADMIN Notifications',
