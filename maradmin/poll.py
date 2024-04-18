@@ -15,7 +15,9 @@ def lambda_handler(event, context):
     req.add_header('User-Agent', 'maradmin.christopherbreen.com <maradmin@christopherbreen.com>')
 
     try:
-        data = urllib.request.urlopen(req)
+        response = urllib.request.urlopen(req)
+        status_code = response.getcode()
+        headers = response.info()
     except HTTPError as err:
         # received 403 forbidden, we are being throttled
         if err.code == 403:
@@ -34,14 +36,21 @@ def lambda_handler(event, context):
     except:
         raise
     else:
-        msg = data.read().decode('utf-8')
+        msg = response.read().decode('utf-8')
+        if not msg:
+            print(f"HTTP Status Code: {status_code}")
+            print("HTTP Headers:")
+            for header in headers:
+                print(f"{header}: {headers[header]}")
+            print("[DEBUG] Response body is empty.")
+            raise
         try:
             root = ET.fromstring(msg)
         except ET.ParseError:
             try:
-                print(f'ParseError: data.info:{json.dumps(data.info())} msg:{str(msg)}')
+                print(f'ParseError: response.info:{json.dumps(response.info())} msg:{str(msg)}')
             except TypeError:
-                print(f'ParseError: data.info:{data.info()} msg:{str(msg)}')
+                print(f'ParseError: response.info:{response.info()} msg:{str(msg)}')
             finally:
                 raise
 
