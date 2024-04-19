@@ -6,6 +6,7 @@ import os
 
 from boto3.dynamodb.conditions import Key
 from urllib.error import HTTPError, URLError
+from maradmin_globals import publish_error_sns
 
 
 def lambda_handler(event, context):
@@ -32,18 +33,16 @@ def lambda_handler(event, context):
         # urlopen error [Errno 97] Address family not supported by protocol
         # Occurs at random, perhaps when USMC Maradmin server is down.
         print(f'[WARNING] {err}')
-        pass
+        # pass
     except:
         raise
     else:
         msg = response.read().decode('utf-8')
         if not msg:
             print(f"HTTP Status Code: {status_code}")
-            print("HTTP Headers:")
-            for header in headers:
-                print(f"{header}: {headers[header]}")
-            print("[DEBUG] Response body is empty.")
-            raise
+            print("[ERROR] Response body is empty.")
+            publish_error_sns('MARADMIN Poll response had empty message body', f'HTTP Status Code: {status_code}. Headers: {headers}')
+            return {"statusCode": 500}
         try:
             root = ET.fromstring(msg)
         except ET.ParseError:
