@@ -6,16 +6,11 @@ def lambda_handler(event, context):
     email = event['Records'][0]['messageAttributes']['email']['stringValue']
     html_msg = event['Records'][0]['body']
     subject = event['Records'][0]['messageAttributes']['subject']['stringValue']
-    # email_token = event['Records'][0]['messageAttributes']['email_token']['stringValue']
-    # params = f'?email={email}&email_token={email_token}'
-    # unsubscribe_link = f'<a href=https://maradmin.christopherbreen.com/unsubscribe{params}>Click here to unsubscribe</a>'
     ses = boto3.client('ses')
     template_data = json.dumps({
         'title': subject,
         'html_msg': html_msg,
         'email': email,
-        # 'email_token': email_token,
-        # 'unsubscribe_link': unsubscribe_link
     })
     ses_response = ses.send_templated_email(
         Source='"MARADMIN" <maradmin@christopherbreen.com>',

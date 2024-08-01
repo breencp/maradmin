@@ -39,6 +39,6 @@ def main(email):
 
 
 if __name__ == '__main__':
-    email = 'joshua.chenoweth@usmc.mil'
+    email = 'nicholas.rowden.mil@usmc.mil'
     main(email)
 

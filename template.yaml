@@ -354,6 +354,28 @@ Resources:
         - S3CrudPolicy:
             BucketName:
               Ref: MaradminDlqBucket
+  MonitorLogsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: maradmin/
+      Handler: monitor_logs.lambda_handler
+      Runtime: python3.9
+      Timeout: 60
+      MemorySize: 128
+      Policies:
+        - Statement:
+            - Sid: AllowLogsAndEmail
+              Effect: Allow
+              Action:
+                - logs:DescribeLogStreams
+                - logs:GetLogEvents
+                - ses:SendEmail
+              Resource: '*'
+      Events:
+        CloudWatchEvent:
+          Type: Schedule
+          Properties:
+            Schedule: 'cron(0 18,0,6 * * ? *)'
 Outputs:
   SnsToSqsFunction:
     Description: SQS Queue Name
@@ -391,3 +413,6 @@ Outputs:
     Description: DLQ Bucket
     Value:
       Ref: MaradminDlqBucket
+  MonitorLogsFunctionArn:
+    Description: MonitorLogs Function Arn
+    Value: !GetAtt MonitorLogsFunction.Arn
