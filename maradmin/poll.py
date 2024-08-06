@@ -31,9 +31,8 @@ def lambda_handler(event, context):
         headers = response.info()
         msg = response.read().decode('utf-8')
         if not msg:
-            print(f"HTTP Status Code: {status_code}")
-            print("[ERROR] Response body is empty.")
-            publish_error_sns('MARADMIN Poll response had empty message body', f'HTTP Status Code: {status_code}. Headers: {headers}')
+            print(f"[ERROR] Response body is empty. HTTP Status Code: {status_code}. Headers: {headers}")
+            # publish_error_sns('MARADMIN Poll response had empty message body', f'HTTP Status Code: {status_code}. Headers: {headers}')
             return {"statusCode": 500}
         try:
             root = ET.fromstring(msg)
@@ -85,14 +84,14 @@ def fetch_url_with_retry(url, retries=3):
             if attempt <= retries:
                 continue
             else:
-                publish_error_sns('MARADMIN Polling Error', str(err))
+                # publish_error_sns('MARADMIN Polling Error', str(err))
                 return
         except URLError as err:
             print(f'[WARNING] URLError: {err}. Retrying {attempt}/{retries}...')
             if attempt <= retries:
                 continue
             else:
-                publish_error_sns('MARADMIN Polling Error', str(err))
+                # publish_error_sns('MARADMIN Polling Error', str(err))
                 return
         except Exception as err:
             print(f'[ERROR] Exception: {err}. Retrying {attempt}/{retries}...')
