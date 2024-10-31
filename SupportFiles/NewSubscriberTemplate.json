@@ -2,7 +2,7 @@
   "Template": {
     "TemplateName": "NewSubscriberTemplate",
     "SubjectPart": "{{title}}",
-    "TextPart": "{{html_msg}}",
+    "TextPart": "{{text_msg}}",
     "HtmlPart": "{{html_msg}}"
   }
 }

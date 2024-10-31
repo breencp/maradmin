@@ -52,52 +52,57 @@ def lambda_handler(event, context):
                     'title': child[0].text
                 }
 
-                # check to see if msg already exists (via description)
-                db = boto3.resource('dynamodb')
-                maradmin_table = db.Table(os.environ['MARADMIN_TABLE_NAME'])
-                rs = maradmin_table.query(
-                    Select='COUNT',
-                    KeyConditionExpression=Key('desc').eq(item['desc'])
-                )
-                if rs['Count'] == 0:
-                    # message is new, get contents and broadcast
-                    full_body = urllib.request.urlopen(item['link']).read().decode('utf-8').replace('(slash)', '/')
-                    start = full_body.find('<div class="body-text">')
-                    end = full_body.find('</div>', start)
-                    body = full_body[start + len('<div class="body-text">'):end]
-                    publish_sns(item, body)
-                    maradmin_table.put_item(Item=item)
-                    print('NEW: ' + item['desc'])
+                if item['desc']:
+                    # check to see if msg already exists (via description as it includes DTG and MARADMIN #, therefore ensuring uniqueness)
+                    # title's have a much higher probability of being duplicated at some point
+                    db = boto3.resource('dynamodb')
+                    maradmin_table = db.Table(os.environ['MARADMIN_TABLE_NAME'])
+                    rs = maradmin_table.query(
+                        Select='COUNT',
+                        KeyConditionExpression=Key('desc').eq(item['desc'])
+                    )
+                    if rs['Count'] == 0:
+                        # message is new, get contents and broadcast
+                        full_body = urllib.request.urlopen(item['link']).read().decode('utf-8').replace('(slash)', '/')
+                        start = full_body.find('<div class="body-text">')
+                        end = full_body.find('</div>', start)
+                        body = full_body[start + len('<div class="body-text">'):end]
+                        publish_sns(item, body)
+                        maradmin_table.put_item(Item=item)
+                        print('NEW: ' + item['desc'])
+                    else:
+                        print('EXISTING: ' + item['desc'])
                 else:
-                    print('EXISTING: ' + item['desc'])
+                    print('[WARNING] Empty description encountered, skipping this item.')
         return {"statusCode": 200}
 
 
 def publish_sns(item, body):
     sns_topic = os.environ['SNS_TOPIC']
-    # sns_topic = 'arn:aws:sns:us-east-1:676250019162:maradmin-MaradminTable-Testing'
     sns = boto3.client('sns')
     title = constrain_sub(item['title'])
     link = item['link']
     text_msg = f'{title} {link}'
-    message = json.dumps({
+    base_message = {
         'default': title,
-        'lambda': body,
+        'lambda': '',
         'sms': text_msg[0:1600]  # max 1,600 characters
-    })
-    if len(message.encode('utf-8')) > 262144:
-        # Message max of 256KB
-        orig_len = len(message.encode('utf-8'))
-        print(f'Truncating {title} from ' + str(orig_len / 1024) + f' KB')
-        footer = f'...<br />Message Truncated.  Visit {link} to read the entire message.'
-        trunc_len = orig_len - 262144
-        abbr_body = body[0:(len(body.encode('utf-8')) - trunc_len - len(footer))] + footer
-        message = json.dumps({
-            'default': title,
-            'lambda': abbr_body,
-            'sms': text_msg[0:1600]  # max 1,600 characters
-        })
-        print('New Size ' + str(len(message.encode('utf-8'))) + ' of 262144')
+    }
+
+    body = body.encode('utf-8', errors='replace').decode('utf-8')
+    json_overhead = len(json.dumps(base_message).encode('utf-8', errors='replace'))
+    max_message_size = 262144  # 256KB
+    footer = f'...<br />Message Truncated.  Visit {link} to read the entire message.'
+    allowed_body_size = max_message_size - json_overhead - len(footer.encode('utf-8'))
+
+    if len(body.encode('utf-8')) > allowed_body_size:
+        print(f'Truncating {title} from {len(body.encode("utf-8")) / 1024:.2f} KB')
+        abbr_body = body[:allowed_body_size].encode('utf-8').decode('utf-8') + footer
+        base_message['lambda'] = abbr_body
+    else:
+        base_message['lambda'] = body
+
+    message = json.dumps(base_message)
 
     try:
         response = sns.publish(
