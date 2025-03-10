@@ -50,5 +50,5 @@ def main(email):
 
 
 if __name__ == '__main__':
-    email = 'chris@bamcis.org'
+    email = '3DIV_RECON_BN@usmc.mil'
     main(email)
