@@ -5,9 +5,12 @@ import re
 import boto3
 import os
 import requests
+from openai import OpenAI
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
 from boto3.dynamodb.conditions import Key
 from urllib.error import HTTPError, URLError
+
 
 # from maradmin_globals import publish_error_sns
 
@@ -20,7 +23,7 @@ def lambda_handler(event, context):
         if err.code == 403:
             # received 403 forbidden, we are being throttled
             # lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
-            #publish_error_sns('403 Error Scraping',
+            # publish_error_sns('403 Error Scraping',
             #                  f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
             # print(f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
             print('[WARNING] Received HTTP 403 Forbidden Error.')
@@ -61,16 +64,17 @@ def lambda_handler(event, context):
                         Select='COUNT',
                         KeyConditionExpression=Key('desc').eq(item['desc'])
                     )
-                    if rs['Count'] == 0:
+                    if rs['Count'] == 0:  # or debug:
                         print('NEW: ' + item['desc'])
                         print('Fetching: ' + item['link'])
                         # message is new, get contents and broadcast
                         full_body = fetch_page_with_curl_headers(item['link'])
-                        # full_body = urllib.request.urlopen(item['link']).read().decode('utf-8').replace('(slash)', '/')
                         start = full_body.find('<div class="body-text">')
                         end = full_body.find('</div>', start)
                         body = full_body[start + len('<div class="body-text">'):end]
-                        publish_sns(item, body)
+                        # body is HTML portion of the page trimmed down to just the MARADMIN itself.
+                        bluf = generate_bluf(body)
+                        publish_sns(item, bluf, body)
                         maradmin_table.put_item(Item=item)
                     else:
                         print('EXISTING: ' + item['desc'])
@@ -79,7 +83,7 @@ def lambda_handler(event, context):
         return {"statusCode": 200}
 
 
-def publish_sns(item, body):
+def publish_sns(item, bluf, body):
     sns_topic = os.environ['SNS_TOPIC']
     sns = boto3.client('sns')
     title = constrain_sub(item['title'])
@@ -92,19 +96,25 @@ def publish_sns(item, body):
     }
 
     body = body.encode('utf-8', errors='replace').decode('utf-8')
+    bluf = bluf.encode('utf-8', errors='replace').decode('utf-8')
+    maradmin = f'{bluf}{body}'
+
     json_overhead = len(json.dumps(base_message).encode('utf-8', errors='replace'))
     max_message_size = 262144  # 256KB
     footer = f'...<br />Message Truncated.  Visit {link} to read the entire message.'
     allowed_body_size = max_message_size - json_overhead - len(footer.encode('utf-8'))
 
-    if len(body.encode('utf-8')) > allowed_body_size:
-        print(f'Truncating {title} from {len(body.encode("utf-8")) / 1024:.2f} KB')
-        abbr_body = body[:allowed_body_size].encode('utf-8').decode('utf-8') + footer
-        base_message['lambda'] = abbr_body
+    if len(maradmin.encode('utf-8')) > allowed_body_size:
+        print(f'Truncating {title} from {len(maradmin.encode("utf-8")) / 1024:.2f} KB')
+        abbr_maradmin = maradmin[:allowed_body_size].encode('utf-8').decode('utf-8') + footer
+        base_message['lambda'] = abbr_maradmin
     else:
-        base_message['lambda'] = body
+        base_message['lambda'] = maradmin
 
     message = json.dumps(base_message)
+
+    # if debug:
+    #     return
 
     try:
         response = sns.publish(
@@ -157,3 +167,33 @@ def fetch_page_with_curl_headers(link):
     response = session.get(link, timeout=10)
     response.raise_for_status()
     return response.text.replace('(slash)', '/')
+
+
+def generate_bluf(body):
+    # Extract the BLUF from the body
+    system_prompt = (
+        "Provide a short, military style BLUF summary of this MARADMIN. It should be one paragraph max, plain text with no headers or formatting. "
+        "Prefix your response with 'BLUF: ', and get right to the point, i.e. do not include statements like 'This MARADMIN is about...'. "
+        "If you find what appears to be military units, MCCs, UICs, etc., include an alphabetical list in the summary on a single line, "
+        "comma seperated, but omit this line entirely if it's not relevant to the MARADMIN. Note that MCC and UIC are three digits. "
+        "If it's four digits, it's likely an MOS.")
+    client = OpenAI()
+
+    completion = client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[
+            ChatCompletionSystemMessageParam(role="system", content=system_prompt),
+            ChatCompletionUserMessageParam(role="user", content=body)
+        ]
+    )
+
+    response = completion.choices[0].message.content
+    return '<p>' + response + '</p>'
+
+
+if __name__ == '__main__':
+    # For local testing
+    event = {}
+    context = None
+    debug = True
+    lambda_handler(event, context)

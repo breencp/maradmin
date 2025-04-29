@@ -93,6 +93,7 @@ Resources:
             Ref: MaradminErrorsTopic
           MARADMIN_TABLE_NAME:
             Ref: MaradminTable
+          OPENAI_API_KEY: ***REMOVED***
       DeadLetterQueue:
         TargetArn: !Ref MaradminErrorsTopic
         Type: SNS

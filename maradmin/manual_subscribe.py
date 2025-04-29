@@ -1,6 +1,6 @@
 import json
 import boto3
-
+import argparse
 from maradmin_globals import get_token
 
 
@@ -50,5 +50,12 @@ def main(email):
 
 
 if __name__ == '__main__':
-    email = '3DIV_RECON_BN@usmc.mil'
-    main(email)
+    parser = argparse.ArgumentParser(description="Subscribe an email to MARADMIN notifications.")
+    parser.add_argument("email", nargs="?", help="Email address to subscribe.")
+    args = parser.parse_args()
+
+    if args.email:
+        main(args.email)
+    else:
+        # If no arg passed, use hard-coded email here.
+        main('joshua.hughley@usmc.mil')
