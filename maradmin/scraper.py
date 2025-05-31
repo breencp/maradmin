@@ -92,41 +92,49 @@ def publish_sns(item, bluf, body):
     base_message = {
         'default': title,
         'lambda': '',
-        'sms': text_msg[0:1600]  # max 1,600 characters
+        'sms': text_msg[:1600]  # max 1,600 characters
     }
 
-    body = body.encode('utf-8', errors='replace').decode('utf-8')
-    bluf = bluf.encode('utf-8', errors='replace').decode('utf-8')
-    maradmin = f'{bluf}{body}'
+    max_bytes = 262144  # 256 KB
+    footer     = f'...<br />Message Truncated.  Visit {link} to read the entire message.'
+    footer_b   = footer.encode('utf-8')
 
-    json_overhead = len(json.dumps(base_message).encode('utf-8', errors='replace'))
-    max_message_size = 262144  # 256KB
-    footer = f'...<br />Message Truncated.  Visit {link} to read the entire message.'
-    allowed_body_size = max_message_size - json_overhead - len(footer.encode('utf-8'))
+    # ---- build full MARADMIN once ----
+    maradmin_b = (bluf + body).encode('utf-8', errors='replace')
 
-    if len(maradmin.encode('utf-8')) > allowed_body_size:
-        print(f'Truncating {title} from {len(maradmin.encode("utf-8")) / 1024:.2f} KB')
-        abbr_maradmin = maradmin[:allowed_body_size].encode('utf-8').decode('utf-8') + footer
-        base_message['lambda'] = abbr_maradmin
-    else:
-        base_message['lambda'] = maradmin
+    # ---- first attempt: no truncation ----
+    base_message['lambda'] = maradmin_b.decode('utf-8', errors='ignore')
+    message_b = json.dumps(base_message).encode('utf-8', errors='replace')
 
-    message = json.dumps(base_message)
+    if len(message_b) > max_bytes:
+        # bytes we must shed from the body to fit the limit *including* footer
+        overshoot   = len(message_b) - max_bytes
+        keep_bytes  = max(0, len(maradmin_b) - overshoot - len(footer_b))
+        truncated_b = maradmin_b[:keep_bytes]
 
-    # if debug:
+        base_message['lambda'] = truncated_b.decode('utf-8', errors='ignore') + footer
+
+        # --- one safety recompute in case JSON escaping changes length ---
+        message_b = json.dumps(base_message).encode('utf-8', errors='replace')
+        if len(message_b) > max_bytes:
+            extra       = len(message_b) - max_bytes
+            keep_bytes  = max(0, keep_bytes - extra)
+            truncated_b = maradmin_b[:keep_bytes]
+            base_message['lambda'] = truncated_b.decode('utf-8', errors='ignore') + footer
+            message_b = json.dumps(base_message).encode('utf-8', errors='replace')
+
+    # ---- publish or debug ----
+    # if 'debug' in globals() and debug:
+    #     print(f'[DEBUG] Final SNS size {len(message_b)} B (limit {max_bytes})')
     #     return
 
-    try:
-        response = sns.publish(
-            TopicArn=sns_topic,
-            Message=message,
-            Subject=title,
-            MessageStructure='json'
-        )
-        print(f'Published {title} to SNS, Response:{response}')
-    except:
-        print('Error processing ' + title)
-        raise
+    response = sns.publish(
+        TopicArn=sns_topic,
+        Message=message_b.decode('utf-8'),
+        Subject=title,
+        MessageStructure='json'
+    )
+    print(f'Published {title} to SNS, Response:{response}')
     return response
 
 
