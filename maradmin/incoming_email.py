@@ -2,8 +2,6 @@ import json
 import boto3
 import os
 
-from six import text_type
-
 from maradmin_globals import get_token
 
 

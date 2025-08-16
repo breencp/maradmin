@@ -69,7 +69,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: scraper.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 60
       Policies:
         - DynamoDBCrudPolicy:
@@ -106,7 +106,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: sns_to_sqs.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 60
       Policies:
         - DynamoDBCrudPolicy:
@@ -155,7 +155,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: sqs_to_ses.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 60
       Tracing: Active
       Policies:
@@ -179,7 +179,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: register.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 10
       Policies:
         - DynamoDBCrudPolicy:
@@ -200,7 +200,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: registered.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 10
       Policies:
         - DynamoDBCrudPolicy:
@@ -227,7 +227,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: verify.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 10
       Policies:
         - DynamoDBCrudPolicy:
@@ -248,7 +248,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: unsubscribe.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 10
       Policies:
         - DynamoDBCrudPolicy:
@@ -269,7 +269,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: poll.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 60
       MemorySize: 160
       Policies:
@@ -310,7 +310,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: incoming_email.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 10
       Policies:
         - DynamoDBCrudPolicy:
@@ -333,7 +333,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: dlq_to_s3.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 10
       Tracing: Active
       Events:
@@ -360,7 +360,7 @@ Resources:
     Properties:
       CodeUri: maradmin/
       Handler: monitor_logs.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 60
       MemorySize: 128
       Policies:

@@ -188,7 +188,7 @@ def generate_bluf(body):
     client = OpenAI()
 
     completion = client.chat.completions.create(
-        model="gpt-4.1",
+        model="gpt-5",
         messages=[
             ChatCompletionSystemMessageParam(role="system", content=system_prompt),
             ChatCompletionUserMessageParam(role="user", content=body)
