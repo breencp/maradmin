@@ -85,6 +85,16 @@ Resources:
               Fn::GetAtt:
                 - MaradminErrorsTopic
                 - TopicName
+        - Statement:
+            - Sid: GetSSMParameter
+              Effect: Allow
+              Action:
+                - ssm:GetParameter
+                - ssm:GetParameters
+                - kms:Decrypt
+              Resource: 
+                - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/maradmin/openai-api-key'
+                - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
       Environment:
         Variables:
           SNS_TOPIC:
@@ -93,7 +103,7 @@ Resources:
             Ref: MaradminErrorsTopic
           MARADMIN_TABLE_NAME:
             Ref: MaradminTable
-          OPENAI_API_KEY: ***REMOVED***
+          OPENAI_API_KEY_PARAM: '/maradmin/openai-api-key'
       DeadLetterQueue:
         TargetArn: !Ref MaradminErrorsTopic
         Type: SNS

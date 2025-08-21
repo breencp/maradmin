@@ -14,6 +14,34 @@ from urllib.error import HTTPError, URLError
 
 # from maradmin_globals import publish_error_sns
 
+# Cache the API key at module level to avoid repeated SSM calls
+_openai_api_key = None
+
+def get_openai_api_key():
+    """Fetch OpenAI API key from SSM Parameter Store with caching"""
+    global _openai_api_key
+    
+    if _openai_api_key is None:
+        # Check if running locally (for testing)
+        if os.environ.get('AWS_EXECUTION_ENV') is None:
+            # Running locally, try to get from environment variable
+            _openai_api_key = os.environ.get('OPENAI_API_KEY')
+            if not _openai_api_key:
+                raise ValueError("OPENAI_API_KEY environment variable not set for local testing")
+        else:
+            # Running in Lambda, fetch from SSM
+            ssm = boto3.client('ssm')
+            param_name = os.environ.get('OPENAI_API_KEY_PARAM', '/maradmin/openai-api-key')
+            
+            try:
+                response = ssm.get_parameter(Name=param_name, WithDecryption=True)
+                _openai_api_key = response['Parameter']['Value']
+            except Exception as e:
+                print(f"Error fetching API key from SSM: {e}")
+                raise
+    
+    return _openai_api_key
+
 
 def lambda_handler(event, context):
     url = f'https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=10&category=14336'
@@ -228,7 +256,10 @@ def generate_bluf(body):
         "If you find what appears to be military units, MCCs, UICs, etc., include an alphabetical list in the summary on a single line, "
         "comma seperated, but omit this line entirely if it's not relevant to the MARADMIN. Note that MCC and UIC are three digits. "
         "If it's four digits, it's likely an MOS.")
-    client = OpenAI()
+    
+    # Get API key from SSM Parameter Store
+    api_key = get_openai_api_key()
+    client = OpenAI(api_key=api_key)
 
     completion = client.chat.completions.create(
         model="gpt-5",
