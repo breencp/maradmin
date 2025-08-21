@@ -68,14 +68,42 @@ def lambda_handler(event, context):
                         print('NEW: ' + item['desc'])
                         print('Fetching: ' + item['link'])
                         # message is new, get contents and broadcast
-                        full_body = fetch_page_with_curl_headers(item['link'])
-                        start = full_body.find('<div class="body-text">')
-                        end = full_body.find('</div>', start)
-                        body = full_body[start + len('<div class="body-text">'):end]
-                        # body is HTML portion of the page trimmed down to just the MARADMIN itself.
-                        bluf = generate_bluf(body)
-                        publish_sns(item, bluf, body)
-                        maradmin_table.put_item(Item=item)
+                        try:
+                            full_body = fetch_page_with_curl_headers(item['link'])
+                            start = full_body.find('<div class="body-text">')
+                            end = full_body.find('</div>', start)
+                            body = full_body[start + len('<div class="body-text">'):end]
+                            # body is HTML portion of the page trimmed down to just the MARADMIN itself.
+                        except requests.exceptions.Timeout as e:
+                            print(f'[ERROR] Timeout fetching {item["link"]}: {e}')
+                            raise
+                        except requests.exceptions.ConnectionError as e:
+                            print(f'[ERROR] Connection error fetching {item["link"]}: {e}')
+                            raise
+                        except requests.exceptions.HTTPError as e:
+                            print(f'[ERROR] HTTP error fetching {item["link"]}: {e.response.status_code} - {e}')
+                            raise
+                        except Exception as e:
+                            print(f'[ERROR] Unexpected error fetching {item["link"]}: {type(e).__name__} - {e}')
+                            raise
+                        
+                        try:
+                            bluf = generate_bluf(body)
+                        except Exception as e:
+                            print(f'[ERROR] Failed to generate BLUF for {item["link"]}: {type(e).__name__} - {e}')
+                            bluf = '<p>BLUF: Unable to generate summary.</p>'
+                        
+                        try:
+                            publish_sns(item, bluf, body)
+                        except Exception as e:
+                            print(f'[ERROR] Failed to publish to SNS for {item["link"]}: {type(e).__name__} - {e}')
+                            raise
+                        
+                        try:
+                            maradmin_table.put_item(Item=item)
+                        except Exception as e:
+                            print(f'[ERROR] Failed to save to DynamoDB for {item["link"]}: {type(e).__name__} - {e}')
+                            raise
                     else:
                         print('EXISTING: ' + item['desc'])
                 else:
@@ -172,9 +200,24 @@ def fetch_page_with_curl_headers(link):
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
     }
     session.headers.update(headers)
-    response = session.get(link, timeout=10)
-    response.raise_for_status()
-    return response.text.replace('(slash)', '/')
+    print(f'[DEBUG] Attempting to fetch URL: {link}')
+    try:
+        response = session.get(link, timeout=10)
+        print(f'[DEBUG] Response status code: {response.status_code}')
+        response.raise_for_status()
+        return response.text.replace('(slash)', '/')
+    except requests.exceptions.Timeout:
+        print(f'[ERROR] Request timed out after 10 seconds for URL: {link}')
+        raise
+    except requests.exceptions.ConnectionError as e:
+        print(f'[ERROR] Connection error for URL {link}: {e}')
+        raise
+    except requests.exceptions.HTTPError as e:
+        print(f'[ERROR] HTTP error {e.response.status_code} for URL {link}: {e}')
+        raise
+    except Exception as e:
+        print(f'[ERROR] Unexpected error fetching URL {link}: {type(e).__name__} - {e}')
+        raise
 
 
 def generate_bluf(body):
