@@ -249,6 +249,7 @@ def fetch_page_with_curl_headers(link):
 
 
 def generate_bluf(body):
+    print(f'[DEBUG] Calling LLM for BLUF')
     # Extract the BLUF from the body
     system_prompt = (
         "Provide a short, military style BLUF summary of this MARADMIN. It should be one paragraph max, plain text with no headers or formatting. "
@@ -270,6 +271,7 @@ def generate_bluf(body):
     )
 
     response = completion.choices[0].message.content
+    print(f'[DEBUG] LLM returned BLUF')
     return '<p>' + response + '</p>'
 
 

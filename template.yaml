@@ -70,7 +70,7 @@ Resources:
       CodeUri: maradmin/
       Handler: scraper.lambda_handler
       Runtime: python3.13
-      Timeout: 60
+      Timeout: 180
       Policies:
         - DynamoDBCrudPolicy:
             TableName:
