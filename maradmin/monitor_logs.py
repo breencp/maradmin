@@ -1,7 +1,7 @@
 import boto3
-import os
+# import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Initialize AWS clients
 logs_client = boto3.client('logs')
@@ -12,8 +12,8 @@ EMAIL_SENDER = 'MARADMIN <maradmin@christopherbreen.com>'
 EMAIL_RECIPIENT = 'maradmin@christopherbreen.com'
 
 def lambda_handler(event, context):
-    # Calculate time range for the past day
-    end_time = datetime.utcnow()
+    # Calculate time range for the past day (timezone-aware)
+    end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=6)
 
     # Convert to milliseconds
@@ -26,7 +26,7 @@ def lambda_handler(event, context):
         descending=True
     )
 
-    pattern = re.compile(r'\[(WARNING|ERROR)\]')
+    pattern = re.compile(r'\[(WARNING|ERROR)]')
 
     log_events = []
     for stream in log_streams['logStreams']:
@@ -42,13 +42,13 @@ def lambda_handler(event, context):
 
         for event in events['events']:
             message = event['message']
-            timestamp = datetime.utcfromtimestamp(event['timestamp'] / 1000).strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.fromtimestamp(event['timestamp'] / 1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
             if pattern.search(message):
                 log_events.append(f'{timestamp} - {message}')
 
     if log_events:
         email_subject = f"Daily Log Summary for {start_time.date()} - {start_time.time()} to {end_time.time()}"
-        email_body = "Summary of log entries with [WARNING] or [ERROR]:\n\n"
+        email_body = "Summary of MARADMIN Poll function log entries with [WARNING] or [ERROR]:\n\n"
         email_body += "\n".join(log_events)
 
         ses_response = ses_client.send_email(

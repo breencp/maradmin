@@ -280,7 +280,7 @@ Resources:
       CodeUri: maradmin/
       Handler: poll.lambda_handler
       Runtime: python3.13
-      Timeout: 60
+      Timeout: 660
       MemorySize: 160
       Policies:
         - DynamoDBCrudPolicy:
@@ -314,6 +314,11 @@ Resources:
       EventInvokeConfig:
         MaximumEventAgeInSeconds: 60
         MaximumRetryAttempts: 0
+      Events:
+        PollSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'rate(15 minutes)'
 
   IncomingEmailFunction:
     Type: AWS::Serverless::Function

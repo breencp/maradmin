@@ -1,12 +1,10 @@
 import json
 import xml.etree.ElementTree as ET
-import urllib.request
 import boto3
 import os
-
+import requests
 from boto3.dynamodb.conditions import Key
-from urllib.error import HTTPError, URLError
-from maradmin_globals import publish_error_sns
+# from maradmin_globals import publish_error_sns
 
 
 def lambda_handler(event, context):
@@ -27,9 +25,9 @@ def lambda_handler(event, context):
             # printing and publish_error_sns takes place inside fetch_url_with_retry
             return {"statusCode": 500}
 
-        status_code = response.getcode()
-        headers = response.info()
-        msg = response.read().decode('utf-8')
+        status_code = response.status_code
+        headers = response.headers
+        msg = response.text
         if not msg:
             print(f"[ERROR] Response body is empty. HTTP Status Code: {status_code}. Headers: {headers}")
             # publish_error_sns('MARADMIN Poll response had empty message body', f'HTTP Status Code: {status_code}. Headers: {headers}')
@@ -38,9 +36,9 @@ def lambda_handler(event, context):
             root = ET.fromstring(msg)
         except ET.ParseError:
             try:
-                print(f'ParseError: response.info:{json.dumps(response.info())} msg:{str(msg)}')
+                print(f'ParseError: response.headers:{json.dumps(dict(response.headers))} msg:{str(msg)}')
             except TypeError:
-                print(f'ParseError: response.info:{response.info()} msg:{str(msg)}')
+                print(f'ParseError: response.headers:{dict(response.headers)} msg:{str(msg)}')
             finally:
                 raise
 
@@ -70,33 +68,56 @@ def lambda_handler(event, context):
 
 
 def fetch_url_with_retry(url, retries=3):
-    req = urllib.request.Request(url)
-    req.add_header('Accept-Encoding', 'identity;q=1.0')
-    req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-    attempt = 0
-    while attempt <= retries:
-        attempt += 1
-        try:
-            response = urllib.request.urlopen(req)
-            return response
-        except HTTPError as err:
-            print(f"[WARNING] Received HTTP {err.code}. Retrying {attempt}/{retries}...")
-            if attempt <= retries:
-                continue
-            else:
-                # publish_error_sns('MARADMIN Polling Error', str(err))
-                return
-        except URLError as err:
-            print(f'[WARNING] URLError: {err}. Retrying {attempt}/{retries}...')
-            if attempt <= retries:
-                continue
-            else:
-                # publish_error_sns('MARADMIN Polling Error', str(err))
-                return
-        except Exception as err:
-            print(f'[ERROR] Exception: {err}. Retrying {attempt}/{retries}...')
-            if attempt <= retries:
-                continue
-            else:
-                raise
-    return None
+    """
+    Fetch URL with comprehensive browser headers to avoid bot detection.
+    Uses the same approach as fetch_page_with_curl_headers in scraper.py.
+    """
+    # Get and log Lambda IP address
+    try:
+        lambda_ip = requests.get('http://checkip.amazonaws.com', timeout=3).text.strip()
+        print(f'[INFO] Lambda IP address: {lambda_ip}')
+    except Exception as e:
+        print(f'[WARNING] Could not determine Lambda IP: {e}')
+        lambda_ip = 'unknown'
+
+    session = requests.Session()
+    headers = {
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'en-US,en;q=0.9,ja;q=0.8',
+        'cache-control': 'no-cache',
+        'pragma': 'no-cache',
+        'priority': 'u=0, i',
+        'referer': 'https://www.marines.mil/News/Messages/MARADMINS/',
+        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
+    }
+    session.headers.update(headers)
+
+    print(f'[DEBUG] Attempting to fetch RSS feed from IP: {lambda_ip}')
+    try:
+        response = session.get(url, timeout=600)  # 10 minute timeout
+        print(f'[DEBUG] Response status code: {response.status_code}')
+        response.raise_for_status()
+        return response
+    except requests.exceptions.Timeout:
+        print(f'[ERROR] Request timed out after 10 minutes for URL: {url}')
+        # publish_error_sns('MARADMIN Polling Error', 'Request timeout')
+        return None
+    except requests.exceptions.ConnectionError as e:
+        print(f'[ERROR] Connection error for URL {url}: {e}')
+        # publish_error_sns('MARADMIN Polling Error', str(e))
+        return None
+    except requests.exceptions.HTTPError as e:
+        print(f'[ERROR] HTTP error {e.response.status_code} for URL {url}: {e}')
+        # publish_error_sns('MARADMIN Polling Error', str(e))
+        return None
+    except Exception as e:
+        print(f'[ERROR] Unexpected error fetching URL {url}: {type(e).__name__} - {e}')
+        raise
