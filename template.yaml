@@ -3,12 +3,16 @@ Transform: AWS::Serverless-2016-10-31
 Description: MARADMIN Scraper
 Globals:
   Function:
+    Architectures:
+      - x86_64
     Tags:
       user:Application: MARADMIN
 
 Resources:
   MaradminTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Tags:
         - Key: "user:Application"
@@ -36,6 +40,8 @@ Resources:
             WriteCapacityUnits: 5
   SubscriberTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Tags:
         - Key: "user:Application"
@@ -71,6 +77,9 @@ Resources:
       Handler: scraper.lambda_handler
       Runtime: python3.13
       Timeout: 900
+      MemorySize: 2048
+      Layers:
+        - !Sub arn:aws:lambda:us-east-1:676250019162:layer:chromium-selenium-x86:9
       Policies:
         - DynamoDBCrudPolicy:
             TableName:
@@ -104,12 +113,10 @@ Resources:
           MARADMIN_TABLE_NAME:
             Ref: MaradminTable
           OPENAI_API_KEY_PARAM: '/maradmin/openai-api-key'
-      DeadLetterQueue:
-        TargetArn: !Ref MaradminErrorsTopic
-        Type: SNS
+          LD_LIBRARY_PATH: '/opt/lib:/var/lang/lib:/lib64:/usr/lib64'
       EventInvokeConfig:
         MaximumEventAgeInSeconds: 900
-        MaximumRetryAttempts: 2
+        MaximumRetryAttempts: 0
 
   SnsToSqsFunction:
     Type: AWS::Serverless::Function
@@ -387,6 +394,10 @@ Resources:
                 - logs:GetLogEvents
                 - ses:SendEmail
               Resource: '*'
+      Environment:
+        Variables:
+          POLL_LOG_GROUP: !Sub '/aws/lambda/${PollFunction}'
+          SCRAPER_LOG_GROUP: !Sub '/aws/lambda/${ScraperFunction}'
       Events:
         CloudWatchEvent:
           Type: Schedule

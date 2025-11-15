@@ -1,15 +1,20 @@
 import json
 import xml.etree.ElementTree as ET
-import urllib.request
 import re
 import boto3
 import os
-import requests
+import time
 from openai import OpenAI
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
 from boto3.dynamodb.conditions import Key
-from urllib.error import HTTPError, URLError
+
+import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 
 # from maradmin_globals import publish_error_sns
@@ -20,7 +25,7 @@ _openai_api_key = None
 def get_openai_api_key():
     """Fetch OpenAI API key from SSM Parameter Store with caching"""
     global _openai_api_key
-    
+
     if _openai_api_key is None:
         # Check if running locally (for testing)
         if os.environ.get('AWS_EXECUTION_ENV') is None:
@@ -32,42 +37,104 @@ def get_openai_api_key():
             # Running in Lambda, fetch from SSM
             ssm = boto3.client('ssm')
             param_name = os.environ.get('OPENAI_API_KEY_PARAM', '/maradmin/openai-api-key')
-            
+
             try:
                 response = ssm.get_parameter(Name=param_name, WithDecryption=True)
                 _openai_api_key = response['Parameter']['Value']
             except Exception as e:
                 print(f"Error fetching API key from SSM: {e}")
                 raise
-    
+
     return _openai_api_key
 
 
+def fetch_rss_feed(url):
+    """
+    Fetch RSS feed with cache-busting headers to avoid stale cached data.
+    Uses the same approach as poll.py to ensure fresh data.
+
+    Args:
+        url: RSS feed URL
+
+    Returns:
+        Response text (XML string)
+
+    Raises:
+        requests.exceptions.HTTPError: For HTTP errors
+        requests.exceptions.RequestException: For other request errors
+    """
+    session = requests.Session()
+    headers = {
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'en-US,en;q=0.9,ja;q=0.8',
+        'cache-control': 'no-cache',
+        'pragma': 'no-cache',
+        'priority': 'u=0, i',
+        'referer': 'https://www.marines.mil/News/Messages/MARADMINS/',
+        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
+    }
+    session.headers.update(headers)
+
+    print(f'[DEBUG] Fetching RSS feed with cache-busting headers from: {url}')
+    response = session.get(url, timeout=600)  # 10 minute timeout
+    print(f'[DEBUG] RSS feed response status code: {response.status_code}')
+
+    # Log cache-related response headers
+    cache_headers = ['Cache-Control', 'Age', 'X-Cache', 'CF-Cache-Status', 'Expires', 'Last-Modified', 'ETag']
+    for header in cache_headers:
+        if header in response.headers:
+            print(f'[DEBUG] Response header {header}: {response.headers[header]}')
+
+    response.raise_for_status()
+
+    return response.text
+
+
 def lambda_handler(event, context):
-    url = f'https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=10&category=14336'
+    url = f'https://www.marines.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=6&Site=481&max=20&category=14336'
+
+    # Fetch RSS feed with cache-busting headers to avoid stale data
     try:
-        response = urllib.request.urlopen(url).read()
-    except HTTPError as err:
-        if err.code == 403:
+        response = fetch_rss_feed(url)
+    except requests.exceptions.HTTPError as err:
+        if err.response and err.response.status_code == 403:
             # received 403 forbidden, we are being throttled
-            # lambda_ip = requests.get('http://checkip.amazonaws.com').text.rstrip()
-            # publish_error_sns('403 Error Scraping',
-            #                  f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
-            # print(f'{lambda_ip} received HTTP 403 Forbidden Error attempting to read {url}')
-            print('[WARNING] Received HTTP 403 Forbidden Error.')
+            print('[WARNING] Received HTTP 403 Forbidden Error fetching RSS feed.')
+            return {"statusCode": 500}
         else:
             raise
-    except URLError as err:
-        # urlopen error [Errno 97] Address family not supported by protocol
-        # Occurs at random, perhaps when USMC Maradmin server is down.
-        print(f'[WARNING] {err}')
-        pass
-    except:
+    except requests.exceptions.RequestException as err:
+        print(f'[WARNING] Request error fetching RSS feed: {err}')
+        return {"statusCode": 500}
+    except Exception:
         raise
     else:
         try:
             root = ET.fromstring(response)
             print('Successfully retrieved RSS Feed')
+
+            # Log RSS feed metadata for debugging cache issues
+            channel = root[0]
+            pub_date = None
+            last_build_date = None
+
+            for elem in channel:
+                if elem.tag == 'pubDate':
+                    pub_date = elem.text
+                elif elem.tag == 'lastBuildDate':
+                    last_build_date = elem.text
+
+            print(f'[DEBUG] RSS Feed pubDate: {pub_date}')
+            print(f'[DEBUG] RSS Feed lastBuildDate: {last_build_date}')
+
         except ET.ParseError:
             print('ParseError: ' + response)
             raise
@@ -102,36 +169,34 @@ def lambda_handler(event, context):
                             end = full_body.find('</div>', start)
                             body = full_body[start + len('<div class="body-text">'):end]
                             # body is HTML portion of the page trimmed down to just the MARADMIN itself.
-                        except requests.exceptions.Timeout as e:
-                            print(f'[ERROR] Timeout fetching {item["link"]}: {e}')
-                            raise
-                        except requests.exceptions.ConnectionError as e:
-                            print(f'[ERROR] Connection error fetching {item["link"]}: {e}')
-                            raise
+
+                            try:
+                                bluf = generate_bluf(body)
+                            except Exception as e:
+                                print(f'[ERROR] Failed to generate BLUF for {item["link"]}: {type(e).__name__} - {e}')
+                                bluf = '<p>BLUF: Unable to generate summary.</p>'
+
+                            try:
+                                publish_sns(item, bluf, body)
+                            except Exception as e:
+                                print(f'[ERROR] Failed to publish to SNS for {item["link"]}: {type(e).__name__} - {e}')
+                                raise
+
+                            try:
+                                maradmin_table.put_item(Item=item)
+                            except Exception as e:
+                                print(f'[ERROR] Failed to save to DynamoDB for {item["link"]}: {type(e).__name__} - {e}')
+                                raise
                         except requests.exceptions.HTTPError as e:
-                            print(f'[ERROR] HTTP error fetching {item["link"]}: {e.response.status_code} - {e}')
-                            raise
-                        except Exception as e:
-                            print(f'[ERROR] Unexpected error fetching {item["link"]}: {type(e).__name__} - {e}')
-                            raise
-                        
-                        try:
-                            bluf = generate_bluf(body)
-                        except Exception as e:
-                            print(f'[ERROR] Failed to generate BLUF for {item["link"]}: {type(e).__name__} - {e}')
-                            bluf = '<p>BLUF: Unable to generate summary.</p>'
-                        
-                        try:
-                            publish_sns(item, bluf, body)
-                        except Exception as e:
-                            print(f'[ERROR] Failed to publish to SNS for {item["link"]}: {type(e).__name__} - {e}')
-                            raise
-                        
-                        try:
-                            maradmin_table.put_item(Item=item)
-                        except Exception as e:
-                            print(f'[ERROR] Failed to save to DynamoDB for {item["link"]}: {type(e).__name__} - {e}')
-                            raise
+                            # HTTPError from fetch - check if 403
+                            if hasattr(e, 'response') and e.response and e.response.status_code == 403:
+                                print(f'[WARNING] Unable to fetch MARADMIN {item["desc"]} due to 403 after retries')
+                                print(f'[WARNING] Will retry on next poll cycle (every 15 minutes)')
+                                # Exit gracefully - return success so no alarms are triggered
+                                return {"statusCode": 200}
+                            else:
+                                # Other HTTP errors should still raise
+                                raise
                     else:
                         print('EXISTING: ' + item['desc'])
                 else:
@@ -208,44 +273,152 @@ def constrain_sub(orig_title):
         return 'A new MARADMIN has been published'
 
 
-def fetch_page_with_curl_headers(link):
-    session = requests.Session()
-    headers = {
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'accept-language': 'en-US,en;q=0.9,ja;q=0.8',
-        'cache-control': 'no-cache',
-        'pragma': 'no-cache',
-        'priority': 'u=0, i',
-        'referer': 'https://www.marines.mil/News/Messages/MARADMINS/',
-        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
-        'sec-fetch-dest': 'document',
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-site': 'same-origin',
-        'sec-fetch-user': '?1',
-        'upgrade-insecure-requests': '1',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
-    }
-    session.headers.update(headers)
-    print(f'[DEBUG] Attempting to fetch URL: {link}')
+def fetch_page_with_curl_headers(link, rate_limit_delay=2.0):
+    """
+    Fetch a page, first trying requests with browser-like headers, then falling back to Selenium if blocked.
+    Site uses Akamai CDN which may block requests that don't look like real browsers.
+
+    Args:
+        link: URL to fetch
+        rate_limit_delay: Delay in seconds before first request to avoid rate limiting (default: 2.0)
+
+    Returns:
+        Response text with '(slash)' replaced by '/'
+
+    Raises:
+        requests.exceptions.HTTPError: For non-transient HTTP errors (including 403 after both attempts)
+        TimeoutException: If Selenium fallback times out
+        WebDriverException: For browser-related errors in Selenium fallback
+    """
+    # Add delay to avoid Akamai rate limiting on rapid successive requests
+    if rate_limit_delay > 0:
+        time.sleep(rate_limit_delay)
+
+    # First attempt: Use requests with browser-like headers
+    print(f'[DEBUG] Attempting to fetch with requests library: {link}')
     try:
-        response = session.get(link, timeout=10)
-        print(f'[DEBUG] Response status code: {response.status_code}')
-        response.raise_for_status()
-        return response.text.replace('(slash)', '/')
-    except requests.exceptions.Timeout:
-        print(f'[ERROR] Request timed out after 10 seconds for URL: {link}')
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-User': '?1',
+            'Sec-Fetch-Dest': 'document'
+        }
+        response = requests.get(link, headers=headers, timeout=30)
+
+        # Check if we got blocked
+        if response.status_code == 403 or 'Access Denied' in response.text:
+            print(f'[DEBUG] Requests blocked (status {response.status_code}), falling back to Selenium')
+        else:
+            response.raise_for_status()
+            print(f'[DEBUG] Successfully fetched with requests ({len(response.text)} characters)')
+            return response.text.replace('(slash)', '/')
+    except Exception as e:
+        print(f'[DEBUG] Requests failed: {type(e).__name__} - {e}, falling back to Selenium')
+
+    # Second attempt: Use Selenium with headless Chrome (single attempt)
+    print(f'[DEBUG] Attempting to fetch with Selenium: {link}')
+    driver = None
+    try:
+
+            # Set up Chrome options for headless browsing
+            chrome_options = Options()
+            chrome_options.add_argument('--headless=new')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
+
+            # In Lambda, use the Chrome binary from the layer
+            if os.environ.get('AWS_EXECUTION_ENV'):
+                # Chrome for Testing layer paths for x86_64
+                # LD_LIBRARY_PATH is set in template.yaml to include /opt/lib for NSS/X11 libraries
+                chrome_options.binary_location = '/opt/chrome/chrome'
+                chrome_options.add_argument('--single-process')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920,1080')
+                chrome_options.add_argument('--disable-software-rasterizer')
+                chrome_options.add_argument('--disable-setuid-sandbox')
+                chrome_options.add_argument('--disable-dev-tools')
+                chrome_options.add_argument('--no-zygote')
+                chrome_options.add_argument('--disable-extensions')
+
+                # Debug: Check if files exist in layer
+                print(f'[DEBUG] /opt contents: {os.listdir("/opt") if os.path.exists("/opt") else "NOT FOUND"}')
+                if os.path.exists('/opt/chrome'):
+                    print(f'[DEBUG] /opt/chrome contents: {os.listdir("/opt/chrome")}')
+                if os.path.exists('/opt/chromedriver'):
+                    print(f'[DEBUG] /opt/chromedriver contents: {os.listdir("/opt/chromedriver")}')
+
+                # Check chromedriver dependencies
+                import subprocess
+                try:
+                    result = subprocess.run(['ldd', '/opt/chromedriver/chromedriver'],
+                                          capture_output=True, text=True, timeout=5)
+                    print(f'[DEBUG] chromedriver dependencies:\n{result.stdout}')
+                except Exception as e:
+                    print(f'[DEBUG] Could not check chromedriver dependencies: {e}')
+
+                # Use chromedriver from the layer
+                service = Service(executable_path='/opt/chromedriver/chromedriver')
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+            else:
+                # Running locally, let Selenium find chromedriver automatically
+                # Make sure chromedriver is installed and in PATH
+                driver = webdriver.Chrome(options=chrome_options)
+
+            # Mask automation detection
+            driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+                "userAgent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36'
+            })
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+            # Navigate to page
+            driver.get(link)
+
+            # Wait for page to load (Akamai JS challenges need time)
+            time.sleep(5)
+
+            # Get page source
+            page_source = driver.page_source
+
+            # Check if we got blocked
+            if 'Access Denied' in page_source:
+                print(f'[ERROR] Access Denied page received from Selenium for URL {link}')
+                error = requests.exceptions.HTTPError(f'403 Client Error: Forbidden for url: {link}')
+                # Create a mock response object
+                class MockResponse:
+                    status_code = 403
+                error.response = MockResponse()
+                raise error
+
+            print(f'[DEBUG] Successfully fetched page with Selenium ({len(page_source)} characters)')
+            return page_source.replace('(slash)', '/')
+
+    except TimeoutException as e:
+        print(f'[ERROR] Browser timeout for URL: {link}')
         raise
-    except requests.exceptions.ConnectionError as e:
-        print(f'[ERROR] Connection error for URL {link}: {e}')
+
+    except WebDriverException as e:
+        print(f'[ERROR] WebDriver error for URL {link}: {e}')
         raise
-    except requests.exceptions.HTTPError as e:
-        print(f'[ERROR] HTTP error {e.response.status_code} for URL {link}: {e}')
-        raise
+
     except Exception as e:
         print(f'[ERROR] Unexpected error fetching URL {link}: {type(e).__name__} - {e}')
         raise
+
+    finally:
+        # Always close the browser
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
 
 
 def generate_bluf(body):
@@ -279,5 +452,5 @@ if __name__ == '__main__':
     # For local testing
     event = {}
     context = None
-    debug = True
+    # debug = True
     lambda_handler(event, context)

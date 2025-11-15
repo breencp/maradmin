@@ -1,7 +1,4 @@
-boto3==1.40.11
-botocore==1.40.11
-jmespath==1.0.1
-python-dateutil==2.9.0.post0
-s3transfer==0.13.1
-requests==2.32.3
-openai==1.99.9
+# boto3 is automatically available in Lambda Python runtime - no need to install
+requests
+openai
+selenium==4.5.0
